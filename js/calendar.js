@@ -57,15 +57,16 @@ function mapearEventoAEstandar(eventoGoogle) {
 // LISTAR EVENTOS (GET) - se llama automático desde auth.js tras login
 // --------------------------------------------
 function listarEventos() {
-  if (!AppState.accessToken) {
-    mostrarSalida('Primero haz login.');
+  const token = obtenerTokenValido();
+  if (!token) {
+    mostrarSalida('Tu sesión ya no es válida. Inicia sesión de nuevo.');
     return Promise.reject('no auth');
   }
 
   return fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${AppState.accessToken}`
+      'Authorization': `Bearer ${token}`
     }
   })
     .then(res => res.json().then(data => ({ status: res.status, data })))
@@ -84,8 +85,9 @@ function listarEventos() {
 // CREAR EVENTO (POST)
 // --------------------------------------------
 function crearEvento(nuevoEvento) {
-  if (!AppState.accessToken) {
-    mostrarSalida('Primero haz login.');
+  const token = obtenerTokenValido();
+  if (!token) {
+    mostrarSalida('Tu sesión ya no es válida. Inicia sesión de nuevo.');
     return Promise.reject('no auth');
   }
 
@@ -149,15 +151,16 @@ crearBtn.addEventListener('click', () => {
 // EDITAR EVENTO (PATCH)
 // --------------------------------------------
 function editarEvento(eventoId, cambios) {
-  if (!AppState.accessToken) {
-    mostrarSalida('Primero haz login.');
+  const token = obtenerTokenValido();
+  if (!token) {
+    mostrarSalida('Tu sesión ya no es válida. Inicia sesión de nuevo.');
     return Promise.reject('no auth');
   }
 
   return fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventoId}`, {
     method: 'PATCH',
     headers: {
-      'Authorization': `Bearer ${AppState.accessToken}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(cambios)
@@ -178,8 +181,9 @@ function editarEvento(eventoId, cambios) {
 // ELIMINAR EVENTO (DELETE)
 // --------------------------------------------
 function eliminarEvento(eventoId) {
-  if (!AppState.accessToken) {
-    mostrarSalida('Primero haz login.');
+  const token = obtenerTokenValido();
+  if (!token) {
+    mostrarSalida('Tu sesión ya no es válida. Inicia sesión de nuevo.');
     return Promise.reject('no auth');
   }
 

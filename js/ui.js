@@ -23,13 +23,13 @@ function iniciarApp() {
     // de doble solicitud de token que vamos a corregir en el Issue 2).
     loginButton.style.display = 'none';
   
-    const tokenGuardado = localStorage.getItem('accessToken');
+    const token = obtenerTokenValido();
     // NOTA para cuando resolvamos el Issue 1: esta línea va a cambiar
     // a leer 'gea_token' (un objeto con access_token + expira_en),
     // no un string plano como ahora.
   
-    if (tokenGuardado) {
-      restaurarSesion(tokenGuardado);
+    if (token) {
+      restaurarSesion(token);
     } else {
       mostrarPantallaLogin();
     }
@@ -94,7 +94,7 @@ function iniciarApp() {
       })
       .catch(() => {
         // El token guardado ya no sirve: limpiamos todo y regresamos al login
-        localStorage.removeItem('accessToken');
+        localStorage.removeItem('gea_Token');
         AppState.accessToken = null;
         mostrarPantallaLogin();
       });
