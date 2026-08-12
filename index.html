@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,18 +23,18 @@
 
                 <p><strong>Usa tu cuenta Google para acceder a tu calendario y datos</strong></p>
 
-                <!-- Aqui se muestra la info del usuario logueado -->
+                <!-- Info del usuario logueado -->
                 <div id="resultado"></div>
             </div>
         </div>
     </div>
 
     <!-- Pantalla de la app -->
-    <div id="pantallaApp">
+    <div id="pantallaApp" style="display: none;">
 
         <!-- Barra de navegacion -->
         <nav class="barra-navegacion">
-            <span class="logo">LOS PAW PATROLS</span>
+            <span class="logo">GESTOR DE EVENTOS</span>
             <div class="nav-derecha">
                 <button id="btnBuscar" class="btn-icono" title="Buscar eventos">&#128269;</button>
                 <input type="text" id="barraBuscar" class="barra-buscar" placeholder="Buscar eventos..." style="display: none;">
@@ -62,7 +62,6 @@
             <div id="panelIzquierdo">
                 <div class="panel-cabecera">
                     <button id="crearBtn"><strong>+ Crear Eventos</strong></button>
-                    <button id="exportarBtn" title="Exportar a Sheets">&#128209;</button>
                     <button id="btnColapsar" class="btn-icono" title="Ocultar/Mostrar calendario">&#9664;</button>
                 </div>
 
@@ -75,15 +74,22 @@
                 </div>
             </div>
 
-            <!-- Columna derecha: lista de eventos -->
+            <!-- Columna derecha: lista de eventos y exportación -->
             <div id="panelDerecho">
+                <h2>Eventos listos para exportar</h2>
+
                 <div id="listaEventos"></div>
                 <pre id="salida"></pre>
+
+                <!-- Tarjeta de exportación adaptada -->
+                <div class="export-section">
+                    <button id="btn-exportar" class="btn-export">Exportar a Google Sheets</button>
+                    <p id="mensaje-estado"></p>
+                </div>
             </div>
 
         </div>
 
-        <!-- Elemento requerido por auth.js / ui.js (no se ve) -->
         <div id="calendarBotones"></div>
     </div>
 
@@ -136,7 +142,7 @@
         </div>
     </div>
 
-    <!-- Modal: Confirmar Eliminacion -->
+    <!-- Modal: Confirmar Eliminación -->
     <div id="modalEliminar" class="modal-overlay">
         <div class="modal-tarjeta">
             <h2>Eliminar evento</h2>
@@ -148,17 +154,18 @@
         </div>
     </div>
 
-    <!-- Librería de Google Identity Services -->
+    <!-- SDK de Google -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-    <!-- Configuración local con el Client ID (no se sube al repo) -->
+    <!-- Archivos de Configuración y Datos Globales -->
     <script src="config.js"></script>
-    
-    <!-- Módulos de la app -->
     <script src="js/auth.js"></script>
-    <script src="js/calendar.js"></script>
     <script src="js/eventos.js"></script>
+    
+    <!-- Componentes de Interfaz y Lógica -->
+    <script src="js/filtros.js"></script>
+    <script src="js/calendar.js"></script>
     <script src="js/ui.js"></script>
-
+    <script src="js/sheets.js"></script>
 </body>
 </html>
