@@ -111,38 +111,87 @@ function crearEvento(nuevoEvento) {
     });
 }
 
-crearBtn.addEventListener('click', () => {
-  const titulo = prompt('Nombre del evento:');
-  if (titulo === null || titulo.trim() === '') return;
+const modalCrear = document.getElementById('modalCrear');
+const formCrearEvento = document.getElementById('formCrearEvento');
+const btnCancelar = document.getElementById('btnCancelar');
+const modalTitulo = document.getElementById('modalTitulo');
+const btnModalCrear = document.getElementById('btnModalCrear');
 
-  const descripcion = prompt('Descripción:') || '';
+let eventoEnEdicion = null;
 
-  const fechaInicio = prompt('Fecha de inicio (YYYY-MM-DD):');
-  if (fechaInicio === null || fechaInicio.trim() === '') return;
+function cerrarModalCrear() {
+  modalCrear.classList.remove('abierto');
+  formCrearEvento.reset();
+  eventoEnEdicion = null;
+  modalTitulo.textContent = 'Crear Evento';
+  btnModalCrear.textContent = 'Crear Evento';
+}
 
-  const horaInicio = prompt('Hora de inicio (HH:MM):');
-  if (horaInicio === null || horaInicio.trim() === '') return;
+function abrirModalCrear() {
+  eventoEnEdicion = null;
+  modalTitulo.textContent = 'Crear Evento';
+  btnModalCrear.textContent = 'Crear Evento';
+  formCrearEvento.reset();
+  modalCrear.classList.add('abierto');
+}
 
-  const fechaFinal = prompt('Fecha final (YYYY-MM-DD):');
-  if (fechaFinal === null || fechaFinal.trim() === '') return;
+function abrirModalEditar(evento) {
+  eventoEnEdicion = evento;
+  modalTitulo.textContent = 'Editar Evento';
+  btnModalCrear.textContent = 'Guardar Cambios';
 
-  const horaFinal = prompt('Hora final (HH:MM):');
-  if (horaFinal === null || horaFinal.trim() === '') return;
+  const [fechaInicio, horaInicio] = evento.fechaHoraInicio ? evento.fechaHoraInicio.split('T') : [evento.fecha, evento.hora];
+  const [fechaFinal, horaFinal] = evento.fechaHoraFin ? evento.fechaHoraFin.split('T') : [evento.fecha, evento.hora];
 
-  const nuevoEvento = {
+  document.getElementById('campoTitulo').value = evento.titulo;
+  document.getElementById('campoDescripcion').value = evento.descripcion;
+  document.getElementById('campoFechaInicio').value = fechaInicio;
+  document.getElementById('campoHoraInicio').value = horaInicio ? horaInicio.substring(0, 5) : '';
+  document.getElementById('campoFechaFinal').value = fechaFinal;
+  document.getElementById('campoHoraFinal').value = horaFinal ? horaFinal.substring(0, 5) : '';
+  document.getElementById('campoTipo').value = evento.tipo;
+
+  modalCrear.classList.add('abierto');
+}
+
+crearBtn.addEventListener('click', abrirModalCrear);
+
+btnCancelar.addEventListener('click', cerrarModalCrear);
+modalCrear.addEventListener('click', (e) => {
+  if (e.target === modalCrear) cerrarModalCrear();
+});
+
+formCrearEvento.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const titulo = document.getElementById('campoTitulo').value.trim();
+  if (!titulo) return;
+
+  const descripcion = document.getElementById('campoDescripcion').value.trim();
+  const fechaInicio = document.getElementById('campoFechaInicio').value;
+  const horaInicio = document.getElementById('campoHoraInicio').value;
+  const fechaFinal = document.getElementById('campoFechaFinal').value;
+  const horaFinal = document.getElementById('campoHoraFinal').value;
+  const tipo = document.getElementById('campoTipo').value;
+
+  const datosEvento = {
     summary: titulo,
     description: descripcion,
     start: { dateTime: `${fechaInicio}T${horaInicio}:00-05:00` },
     end: { dateTime: `${fechaFinal}T${horaFinal}:00-05:00` },
     extendedProperties: {
-      private: { tipo: "general" }
+      private: { tipo }
     }
   };
 
-  crearEvento(nuevoEvento)
-    .then(evento => {
-      mostrarSalida('Evento creado:\n' + JSON.stringify(evento, null, 2));
+  const guardar = eventoEnEdicion
+    ? editarEvento(eventoEnEdicion.id, datosEvento)
+    : crearEvento(datosEvento);
+
+  guardar
+    .then(() => {
       renderizarEventos();
+      cerrarModalCrear();
     })
     .catch(err => mostrarSalida('Error: ' + err));
 });

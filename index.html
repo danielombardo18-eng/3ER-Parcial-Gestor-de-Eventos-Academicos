@@ -7,22 +7,146 @@
     <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
-    <h1>Bienvenido</h1>
+    
+    <!-- Pantalla de Login -->
+    <div id="pantallaLogin">
+        <h1><strong>Bienvenido</strong></h1>
 
-    <button id="loginButton">Login con Google</button>
-    <div id="resultado"></div>
+        <div class="conteinar">
+            <div class="form-box">
+                <h2><strong>INICIAR SESION</strong></h2>
 
-    <!-- Botones de prueba de Calendar, aparecen despues del login -->
-    <div id="calendarBotones">
-        <button id="crearBtn">Crear evento de prueba</button>
-        <button id="logoutBtn">Cerrar sesión</button>
+                <button id="loginButton" class="google-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" height="18">
+                    <span id="loginTexto"><strong>Login con Google</strong></span>
+                </button>
+
+                <p><strong>Usa tu cuenta Google para acceder a tu calendario y datos</strong></p>
+
+                <!-- Aqui se muestra la info del usuario logueado -->
+                <div id="resultado"></div>
+            </div>
+        </div>
     </div>
 
-    <!-- Aqui se pinta la lista de eventos con botones editar/eliminar -->
-    <div id="listaEventos"></div>
+    <!-- Pantalla de la app -->
+    <div id="pantallaApp">
 
-    <!-- Aqui se muestra la respuesta cruda de la API -->
-    <pre id="salida"></pre>
+        <!-- Barra de navegacion -->
+        <nav class="barra-navegacion">
+            <span class="logo">LOS PAW PATROLS</span>
+            <div class="nav-derecha">
+                <button id="btnBuscar" class="btn-icono" title="Buscar eventos">&#128269;</button>
+                <input type="text" id="barraBuscar" class="barra-buscar" placeholder="Buscar eventos..." style="display: none;">
+                <img id="avatarUsuario" alt="avatar">
+                <span id="usuarioLogueado" class="nombre-usuario"></span>
+                <button id="logoutBtn" class="btn-cerrar"><strong>Cerrar Sesión</strong></button>
+            </div>
+        </nav>
+
+        <!-- Barra de herramientas: vista + fecha -->
+        <div class="barra-herramientas">
+            <div class="vistas-botones">
+                <button id="btnVistaDia">Día</button>
+                <button id="btnVistaSemana">Semana</button>
+                <button id="btnVistaMes">Mes</button>
+            </div>
+            <button id="btnHoy" class="btn-hoy">Hoy</button>
+            <h3 id="tituloCalendario"></h3>
+        </div>
+
+        <!-- Contenido en dos columnas -->
+        <div class="contenido-app">
+
+            <!-- Columna izquierda: crear + calendario -->
+            <div id="panelIzquierdo">
+                <div class="panel-cabecera">
+                    <button id="crearBtn"><strong>+ Crear Eventos</strong></button>
+                    <button id="exportarBtn" title="Exportar a Sheets">&#128209;</button>
+                    <button id="btnColapsar" class="btn-icono" title="Ocultar/Mostrar calendario">&#9664;</button>
+                </div>
+
+                <div id="vistaCalendario">
+                    <div class="cabecera-calendario">
+                        <button id="mesAnterior">&#9664;</button>
+                        <button id="mesSiguiente">&#9654;</button>
+                    </div>
+                    <div id="contenidoCalendario"></div>
+                </div>
+            </div>
+
+            <!-- Columna derecha: lista de eventos -->
+            <div id="panelDerecho">
+                <div id="listaEventos"></div>
+                <pre id="salida"></pre>
+            </div>
+
+        </div>
+
+        <!-- Elemento requerido por auth.js / ui.js (no se ve) -->
+        <div id="calendarBotones"></div>
+    </div>
+
+    <!-- Modal: Crear Evento -->
+    <div id="modalCrear" class="modal-overlay">
+        <div class="modal-tarjeta">
+            <h2 id="modalTitulo">Crear Evento</h2>
+            <form id="formCrearEvento">
+                <label for="campoTitulo">Título</label>
+                <input type="text" id="campoTitulo" placeholder="Nombre del evento" required>
+
+                <label for="campoDescripcion">Descripción</label>
+                <textarea id="campoDescripcion" rows="3" placeholder="Detalles del evento"></textarea>
+
+                <div class="fila-doble">
+                    <div>
+                        <label for="campoFechaInicio">Fecha de inicio</label>
+                        <input type="date" id="campoFechaInicio" required>
+                    </div>
+                    <div>
+                        <label for="campoHoraInicio">Hora de inicio</label>
+                        <input type="time" id="campoHoraInicio" required>
+                    </div>
+                </div>
+
+                <div class="fila-doble">
+                    <div>
+                        <label for="campoFechaFinal">Fecha final</label>
+                        <input type="date" id="campoFechaFinal" required>
+                    </div>
+                    <div>
+                        <label for="campoHoraFinal">Hora final</label>
+                        <input type="time" id="campoHoraFinal" required>
+                    </div>
+                </div>
+
+                <label for="campoTipo">Tipo</label>
+                <select id="campoTipo">
+                    <option value="general">General</option>
+                    <option value="academico">Académico</option>
+                    <option value="cultural">Cultural</option>
+                    <option value="deportivo">Deportivo</option>
+                </select>
+
+                <div class="botones-modal">
+                    <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
+                    <button type="submit" id="btnModalCrear" class="btn btn-crear">Crear Evento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmar Eliminacion -->
+    <div id="modalEliminar" class="modal-overlay">
+        <div class="modal-tarjeta">
+            <h2>Eliminar evento</h2>
+            <p>¿Estás seguro de eliminar el evento <strong id="textoEventoAEliminar"></strong>?</p>
+            <div class="botones-modal">
+                <button type="button" id="btnCancelarEliminar" class="btn-cancelar">Cancelar</button>
+                <button type="button" id="btnConfirmarEliminar" class="btn-eliminar">Aceptar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Librería de Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -35,5 +159,6 @@
     <script src="js/calendar.js"></script>
     <script src="js/eventos.js"></script>
     <script src="js/ui.js"></script>
+
 </body>
 </html>
