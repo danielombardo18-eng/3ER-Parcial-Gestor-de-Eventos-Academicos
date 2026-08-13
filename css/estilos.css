@@ -294,6 +294,15 @@ textarea {
     margin-bottom: 20px;
 }
 
+.error-formulario {
+    color: #e74c3c;
+    font-size: 13px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 10px;
+    display: none;
+}
+
 .btn-crear {
     width: auto;
     margin: 0;

@@ -100,39 +100,80 @@ function guardarEventoEnGoogleCalendar(estructuraGoogle, eventId = null) {
     },
     body: JSON.stringify(estructuraGoogle)
   })
-    .then(res => {
-      if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-      return res.json();
-    })
-    .then(() => obtenerEventosGoogleCalendar());
-}
-
-// 5. ELIMINAR EVENTO EN GOOGLE CALENDAR
-function eliminarEventoEnGoogleCalendar(eventId) {
-  const token = obtenerTokenAcceso();
-  if (!token) return Promise.reject('Sin token de acceso');
-
-  return fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
-    method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` }
-  })
-    .then(res => {
-      if (!res.ok && res.status !== 410) throw new Error(`Error al eliminar: ${res.status}`);
-      return obtenerEventosGoogleCalendar();
+    .then(res => res.json().then(data => ({ status: res.status, data })))
+    .then(({ status, data }) => {
+      if (status !== 200) {
+        console.log('ERROR DE GOOGLE (crear):', data);
+        throw new Error(JSON.stringify(data));
+      }
+      const eventoEstandar = mapearEventoAEstandar(data);
+      actualizarEventoEnCache(eventoEstandar);
+      return eventoEstandar;
     });
 }
 
-// 6. FORMULARIO: CREAR O EDITAR
-function procesarGuardadoEvento(e) {
-  if (e) e.preventDefault();
+const modalCrear = document.getElementById('modalCrear');
+const formCrearEvento = document.getElementById('formCrearEvento');
+const btnCancelar = document.getElementById('btnCancelar');
+const modalTitulo = document.getElementById('modalTitulo');
+const btnModalCrear = document.getElementById('btnModalCrear');
 
-  const titulo = document.getElementById('campoTitulo')?.value;
-  const descripcion = document.getElementById('campoDescripcion')?.value;
-  const fechaInicio = document.getElementById('campoFechaInicio')?.value;
-  const horaInicio = document.getElementById('campoHoraInicio')?.value;
-  const fechaFinal = document.getElementById('campoFechaFinal')?.value;
-  const horaFinal = document.getElementById('campoHoraFinal')?.value;
-  const tipo = document.getElementById('campoTipo')?.value || 'general';
+let eventoEnEdicion = null;
+
+function cerrarModalCrear() {
+  modalCrear.classList.remove('abierto');
+  formCrearEvento.reset();
+  eventoEnEdicion = null;
+  modalTitulo.textContent = 'Crear Evento';
+  btnModalCrear.textContent = 'Crear Evento';
+}
+
+function abrirModalCrear() {
+  eventoEnEdicion = null;
+  modalTitulo.textContent = 'Crear Evento';
+  btnModalCrear.textContent = 'Crear Evento';
+  formCrearEvento.reset();
+  modalCrear.classList.add('abierto');
+}
+
+function abrirModalEditar(evento) {
+  eventoEnEdicion = evento;
+  modalTitulo.textContent = 'Editar Evento';
+  btnModalCrear.textContent = 'Guardar Cambios';
+
+  const [fechaInicio, horaInicio] = evento.fechaHoraInicio ? evento.fechaHoraInicio.split('T') : [evento.fecha, evento.hora];
+  const [fechaFinal, horaFinal] = evento.fechaHoraFin ? evento.fechaHoraFin.split('T') : [evento.fecha, evento.hora];
+
+  document.getElementById('campoTitulo').value = evento.titulo;
+  document.getElementById('campoDescripcion').value = evento.descripcion;
+  document.getElementById('campoFechaInicio').value = fechaInicio;
+  document.getElementById('campoHoraInicio').value = horaInicio ? horaInicio.substring(0, 5) : '';
+  document.getElementById('campoFechaFinal').value = fechaFinal;
+  document.getElementById('campoHoraFinal').value = horaFinal ? horaFinal.substring(0, 5) : '';
+  document.getElementById('campoTipo').value = evento.tipo;
+
+  modalCrear.classList.add('abierto');
+}
+
+crearBtn.addEventListener('click', abrirModalCrear);
+
+btnCancelar.addEventListener('click', cerrarModalCrear);
+modalCrear.addEventListener('click', (e) => {
+  if (e.target === modalCrear) cerrarModalCrear();
+});
+
+formCrearEvento.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const titulo = document.getElementById('campoTitulo').value.trim();
+  if (!titulo) return;
+
+  const descripcion = document.getElementById('campoDescripcion').value.trim();
+  const fechaInicio = document.getElementById('campoFechaInicio').value;
+  const horaInicio = document.getElementById('campoHoraInicio').value;
+  const fechaFinal = document.getElementById('campoFechaFinal').value;
+  const horaFinal = document.getElementById('campoHoraFinal').value;
+  const tipo = document.getElementById('campoTipo').value;
 
   if (!titulo || !fechaInicio || !horaInicio || !fechaFinal || !horaFinal) {
     alert('Por favor completa todos los campos obligatorios.');
@@ -142,192 +183,56 @@ function procesarGuardadoEvento(e) {
   const estructuraGoogle = {
     summary: titulo,
     description: descripcion,
-    start: {
-      dateTime: `${fechaInicio}T${horaInicio}:00`,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Cancun'
-    },
-    end: {
-      dateTime: `${fechaFinal}T${horaFinal}:00`,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Cancun'
-    },
+    start: { dateTime: `${fechaInicio}T${horaInicio}:00-05:00` },
+    end: { dateTime: `${fechaFinal}T${horaFinal}:00-05:00` },
     extendedProperties: {
       private: { tipo: tipo }
     }
   };
 
-  guardarEventoEnGoogleCalendar(estructuraGoogle, eventoEdicionId)
-    .then(() => cerrarModalCrear())
-    .catch(err => {
-      console.error('Error al guardar/modificar evento:', err);
-      alert('Error al sincronizar con Google Calendar.');
+  // Evita que el doble clic en "Guardar" duplique el evento
+  btnModalCrear.disabled = true;
+
+  const guardar = eventoEnEdicion
+    ? editarEvento(eventoEnEdicion.id, datosEvento)
+    : crearEvento(datosEvento);
+
+  guardar
+    .then(() => {
+      renderizarEventos();
+      cerrarModalCrear();
+    })
+    .catch(err => mostrarSalida('Error: ' + err));
+});
+
+// --------------------------------------------
+// EDITAR EVENTO (PATCH)
+// --------------------------------------------
+function editarEvento(eventoId, cambios) {
+  const token = obtenerTokenValido();
+  if (!token) {
+    mostrarSalida('Tu sesión ya no es válida. Inicia sesión de nuevo.');
+    return Promise.reject('no auth');
+  }
+
+  return fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventoId}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(cambios)
+  })
+    .then(res => res.json().then(data => ({ status: res.status, data })))
+    .then(({ status, data }) => {
+      if (status !== 200) {
+        console.log('ERROR DE GOOGLE (editar):', data);
+        throw new Error(JSON.stringify(data));
+      }
+      const eventoEstandar = mapearEventoAEstandar(data);
+      actualizarEventoEnCache(eventoEstandar);
+      return eventoEstandar;
     });
-}
-
-// 7. CONTROLES DE LOS MODALES
-function abrirModalCrear(fechaSeleccionada = null, horaSeleccionada = null) {
-  eventoEdicionId = null;
-  const modal = document.getElementById('modalCrear');
-  const tituloModal = document.getElementById('modalTitulo');
-  const btnSubmit = document.getElementById('btnModalCrear');
-
-  if (tituloModal) tituloModal.textContent = 'Crear Evento';
-  if (btnSubmit) btnSubmit.textContent = 'Crear Evento';
-
-  const hoyStr = fechaSeleccionada || new Date().toISOString().split('T')[0];
-  const horaInicioStr = horaSeleccionada || '09:00';
-  
-  let horaFinNum = parseInt(horaInicioStr.split(':')[0]) + 1;
-  if (horaFinNum > 23) horaFinNum = 23;
-  const horaFinStr = `${horaFinNum.toString().padStart(2, '0')}:00`;
-
-  document.getElementById('campoTitulo').value = '';
-  document.getElementById('campoDescripcion').value = '';
-  document.getElementById('campoFechaInicio').value = hoyStr;
-  document.getElementById('campoFechaFinal').value = hoyStr;
-  document.getElementById('campoHoraInicio').value = horaInicioStr;
-  document.getElementById('campoHoraFinal').value = horaFinStr;
-  document.getElementById('campoTipo').value = 'general';
-
-  if (modal) modal.style.display = 'flex';
-}
-
-function abrirModalEditar(id) {
-  const data = localStorage.getItem('gea_eventos_cache');
-  const todos = data ? JSON.parse(data) : [];
-  const ev = todos.find(item => item.id === id);
-  if (!ev) return;
-
-  eventoEdicionId = id;
-  const modal = document.getElementById('modalCrear');
-  const tituloModal = document.getElementById('modalTitulo');
-  const btnSubmit = document.getElementById('btnModalCrear');
-
-  if (tituloModal) tituloModal.textContent = 'Editar Evento';
-  if (btnSubmit) btnSubmit.textContent = 'Guardar Cambios';
-
-  document.getElementById('campoTitulo').value = ev.titulo;
-  document.getElementById('campoDescripcion').value = ev.descripcion || '';
-  document.getElementById('campoFechaInicio').value = ev.fecha;
-  document.getElementById('campoFechaFinal').value = ev.fechaFin || ev.fecha;
-  document.getElementById('campoHoraInicio').value = ev.hora;
-  document.getElementById('campoHoraFinal').value = ev.horaFin || '01:00';
-  document.getElementById('campoTipo').value = ev.tipo || 'general';
-
-  if (modal) modal.style.display = 'flex';
-}
-
-function cerrarModalCrear() {
-  eventoEdicionId = null;
-  const modal = document.getElementById('modalCrear');
-  if (modal) modal.style.display = 'none';
-  const form = document.getElementById('formCrearEvento');
-  if (form) form.reset();
-}
-
-function solicitarEliminarEvento(id, titulo) {
-  eventoAEliminarId = id;
-  const textoModal = document.getElementById('textoEventoAEliminar');
-  const modalEliminar = document.getElementById('modalEliminar');
-
-  if (textoModal) textoModal.textContent = `"${titulo}"`;
-  if (modalEliminar) modalEliminar.style.display = 'flex';
-}
-
-function confirmarEliminarEvento() {
-  if (!eventoAEliminarId) return;
-
-  eliminarEventoEnGoogleCalendar(eventoAEliminarId)
-    .then(() => cerrarModalEliminar())
-    .catch(err => {
-      console.error('Error al eliminar:', err);
-      alert('Error al intentar eliminar el evento.');
-    });
-}
-
-function cerrarModalEliminar() {
-  eventoAEliminarId = null;
-  const modalEliminar = document.getElementById('modalEliminar');
-  if (modalEliminar) modalEliminar.style.display = 'none';
-}
-
-// 8. NAVEGACIÓN Y VISTAS
-function cambiarVista(nuevaVista) {
-  vistaActual = nuevaVista;
-  renderizarCalendario();
-}
-
-function navegarFecha(direccion) {
-  if (vistaActual === 'dia') fechaActual.setDate(fechaActual.getDate() + direccion);
-  else if (vistaActual === 'semana') fechaActual.setDate(fechaActual.getDate() + (direccion * 7));
-  else if (vistaActual === 'mes') fechaActual.setMonth(fechaActual.getMonth() + direccion);
-  renderizarCalendario();
-}
-
-// 9. RENDERIZADO VISUAL
-function renderizarCalendario() {
-  const contenedor = document.getElementById('contenidoCalendario');
-  const titulo = document.getElementById('tituloCalendario');
-  if (!contenedor) return;
-
-  contenedor.innerHTML = '';
-  const eventos = leerCache();
-
-  // Actualiza la lista del panel derecho ("Eventos listos para exportar")
-  if (typeof renderizarListaEventos === 'function') {
-    renderizarListaEventos(eventos);
-  }
-
-  // Dibuja la vista correspondiente en el calendario central
-  if (vistaActual === 'dia') renderizarVistaDia(contenedor, titulo, eventos);
-  else if (vistaActual === 'semana') renderizarVistaSemana(contenedor, titulo, eventos);
-  else if (vistaActual === 'mes') renderizarVistaMes(contenedor, titulo, eventos);
-}
-
-// VISTA DÍA
-function renderizarVistaDia(contenedor, titulo, eventos) {
-  const fechaStr = fechaActual.toISOString().split('T')[0];
-  if (titulo) {
-    titulo.textContent = fechaActual.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  }
-
-  const eventosDelDia = eventos.filter(e => e.fecha === fechaStr);
-  const tablaHoras = document.createElement('div');
-  tablaHoras.style.display = 'flex';
-  tablaHoras.style.flexDirection = 'column';
-  tablaHoras.style.gap = '4px';
-
-  for (let h = 0; h < 24; h++) {
-    const horaTexto = h.toString().padStart(2, '0') + ':00';
-    const coincidencia = eventosDelDia.find(e => e.hora.startsWith(h.toString().padStart(2, '0')));
-
-    const fila = document.createElement('div');
-    fila.style.display = 'flex';
-    fila.style.alignItems = 'center';
-    fila.style.padding = '8px 12px';
-    fila.style.border = '1px solid #e2e8f0';
-    fila.style.borderRadius = '6px';
-    fila.style.background = coincidencia ? '#f0fdf4' : '#ffffff';
-
-    fila.innerHTML = `
-      <span style="width: 70px; font-weight: bold; color: #64748b; font-size:12px;">${horaTexto}</span>
-      <div style="flex:1;">
-        ${coincidencia 
-          ? `<strong style="color:#166534; font-size:13px;">${coincidencia.titulo}</strong> <span style="font-size:11px; background:#dcfce7; padding:2px 6px; border-radius:4px; color:#15803d;">${coincidencia.tipo}</span>` 
-          : '<span style="color:#cbd5e1; font-size:12px;">+ Clic para agendar</span>'}
-      </div>
-      ${coincidencia ? `
-        <button onclick="abrirModalEditar('${coincidencia.id}')" style="background:#e0e7ff; color:#3730a3; border:none; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer; margin-right:4px;">✏️ Editar</button>
-        <button onclick="solicitarEliminarEvento('${coincidencia.id}', '${coincidencia.titulo}')" style="background:#ef4444; color:#fff; border:none; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">✕</button>
-      ` : ''}
-    `;
-
-    if (!coincidencia) {
-      fila.onclick = () => abrirModalCrear(fechaStr, horaTexto);
-    }
-
-    tablaHoras.appendChild(fila);
-  }
-  contenedor.appendChild(tablaHoras);
 }
 
 // VISTA SEMANA
@@ -457,4 +362,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   obtenerEventosGoogleCalendar();
-});
+}); 
